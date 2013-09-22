@@ -210,8 +210,13 @@ function MultiTube( ) {
 
   this.getUserId = function( ) {
 
-    var id = Math.floor( Math.random( ) * 100000000 );
-    return id;
+    if ( $.cookie('userId') ) {
+      return $.cookie('userId');
+    } else {
+	    var id = Math.floor( Math.random( ) * 100000000 );
+		$.cookie('userId', id);
+	    return id;
+	}
 
   };
 
