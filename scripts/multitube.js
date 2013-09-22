@@ -1,6 +1,7 @@
 function MultiTube( ) {
 
-  this.MIN_USERS = 2;
+  this.MIN_USERS = 1;
+  this.HIT_TOLERANCE = 100;
 
   this.buffered = false;
   this.mouseX = 0;
@@ -11,6 +12,42 @@ function MultiTube( ) {
   this.cursors = {};
   this.youTubePlayer = null;
   this.playedExplosion = false;
+
+  this.hitTargets = [
+    {
+	  id: 'explosion',
+      x: 600,
+      y: 360,
+      startTime: 2,
+      endTime: 3,
+      width: 128,
+      height: 128,
+      duration: 800,
+      played: false
+    },
+    {
+	  id: 'bird',
+      x: 735,
+      y: 330,
+      startTime: 9,
+      endTime: 10,
+      width: 132,
+      height: 89,
+      duration: 800,
+      played: false
+    },
+    {
+	  id: 'bird',
+      x: 610,
+      y: 140,
+      startTime: 15,
+      endTime: 16,
+      width: 132,
+      height: 89,
+      duration: 800,
+      played: false
+    }
+  ];
 
   this.onYouTubePlayerReady = function( playerId ) {
 	
@@ -39,6 +76,7 @@ function MultiTube( ) {
         break;
       case 2:
 		console.log( 'paused' );
+		console.log( 'time: ' + this.youTubePlayer.getCurrentTime( ) + ', x: ' + this.mouseX + ', y: ' + this.mouseY );
         break;
       case 3:
 		console.log( 'buffering' );
@@ -61,8 +99,10 @@ function MultiTube( ) {
 	
 	// console.log( snapshot.val( ) );
 	
-	this.renderCursors( snapshot.val( ) );
-	this.syncPlayback( snapshot.val( ) );
+	var users = snapshot.val( );
+	this.renderCursors( users );
+	this.syncPlayback( users );
+	this.checkHitTargets( users );
 	
   };
 
@@ -144,24 +184,38 @@ function MultiTube( ) {
 		this.youTubePlayer.pauseVideo( );
 	}
 	
-	if ( this.testMouseHit( users ) ) {
-	  this.playExplosion( );
-	}
-	
   };
 
-  this.testMouseHit = function( users ) {
+  this.checkHitTargets = function( users ) {
+
+    if ( this.youTubePlayer == null ) {
+      return;
+    }
+
+    for ( var i = 0; i < this.hitTargets.length; i++ ) {
+
+      var data = this.hitTargets[ i ];
+      if ( this.testHit( users, data ) ) {
+	    this.playAnimation( data );
+        this.hitTargets[ i ].played = true;
+      }
+
+    }
+
+  };
+
+  this.testHit = function( users, data ) {
 
     console.log( '\ntestMouseHit( )' );
     console.log( '  currentTime: ' + this.youTubePlayer.getCurrentTime( ) );
 
     var allUsersMouseHit = false;
-    if ( this.youTubePlayer.getCurrentTime( ) > 2 && this.youTubePlayer.getCurrentTime( ) < 3 && !this.playedExplosion ) {
+    if ( this.youTubePlayer.getCurrentTime( ) > data.startTime && this.youTubePlayer.getCurrentTime( ) < data.endTime && !data.played ) {
       allUsersMouseHit = true;
       for ( id in users ) {
         user = users[ id ];
 		console.log( '  testMouseHit: ' + id + ': buffered: ' + user.buffered + ', x: ' + user.x + ', y: ' + user.y );
-        if ( Math.abs( user.x - 600 ) > 50 || Math.abs( user.y - 360 ) > 50 ) {
+        if ( Math.abs( user.x - data.x ) > this.HIT_TOLERANCE || Math.abs( user.y - data.y ) > this.HIT_TOLERANCE ) {
           allUsersMouseHit = false;
           break;
         }
@@ -172,19 +226,19 @@ function MultiTube( ) {
 	
   };
 
-  this.playExplosion = function( ) {
+  this.playAnimation = function( data ) {
 	
-    this.playedExplosion = true;
-    var explosion = $( "<div class='explosion' id='explosion1'><img src='images/explosion.gif' width='128' height='128' /></div>" );
+    // this.playedExplosion = true;
+    var explosion = $( "<div class='animation' id='" + data.id + "'><img src='images/" + data.id + ".gif' width='" + data.width + "' height='" + data.height + "' /></div>" );
     $( 'body' ).append( explosion );
-    $( '#explosion1').offset( { left: 600 - 64, top: 360 - 64 } );
-    setTimeout( $.proxy( this.stopExplosion, this ), 800 );
+    $( '#' + data.id ).offset( { left: data.x - data.width / 2, top: data.y - data.height / 2 } );
+    setTimeout( $.proxy( this.stopAnimation, this, data.id ), data.duration );
 
   };
 
-  this.stopExplosion = function( ) {
+  this.stopAnimation = function( id ) {
 
-    $( '#explosion1').remove( );
+    $( '#' + id ).remove( );
 	
   };
 
