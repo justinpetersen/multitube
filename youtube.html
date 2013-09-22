@@ -1,0 +1,28 @@
+<html>
+<head>
+  <script type="text/javascript" src="scripts/swfobject.js"></script>
+</head>
+<body>  
+  <div id="ytapiplayer">
+    You need Flash player 8+ and JavaScript enabled to view this video.
+  </div>
+
+  <script type="text/javascript">
+
+    var params = { allowScriptAccess: "always" };
+    var atts = { id: "myytplayer" };
+    swfobject.embedSWF("http://www.youtube.com/v/zuzaxlddWbk?autoplay=1&controls=0&enablejsapi=1&rel=0&showinfo=0&version=3&playerapiid=multitube",
+                       "ytapiplayer", "1280", "720", "8", null, null, params, atts);
+
+	function onYouTubePlayerReady(playerId) {
+	  ytplayer = document.getElementById("myytplayer");
+	  ytplayer.addEventListener("onStateChange", "onytplayerStateChange");
+	}
+
+	function onytplayerStateChange(newState) {
+	   console.log("Player's new state: " + newState);
+	}
+
+  </script>
+</body>
+</html>

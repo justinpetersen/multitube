@@ -1,19 +1,8 @@
-/*$('#messageInput').keypress(function (e) {
-  if (e.keyCode == 13) {
-    var name = $('#nameInput').val();
-    var text = $('#messageInput').val();
-    myDataRef.push({name: name, text: text});
-    $('#messageInput').val('');
-  }
-});
-
-myDataRef.on('child_added', function(snapshot) {
-  var message = snapshot.val();
-  displayChatMessage(message.name, message.text);
-});*/
-
 function MultiTube( ) {
 
+  this.buffered = false;
+  this.mouseX = 0;
+  this.mouseY = 0;
   this.usersListDataRef = null;
   this.userDataRef = null;
   this.userId = -1;
@@ -22,15 +11,39 @@ function MultiTube( ) {
 
   this.onYouTubePlayerReady = function( playerId ) {
 	
-	console.log( 'onYouTubePlayerReady' );
+	// console.log( 'onYouTubePlayerReady' );
 	
-    this.initYouTubePlayer( playerId );
+    this.youTubePlayer = document.getElementById("myytplayer");
+    this.youTubePlayer.addEventListener("onStateChange", "onYouTubePlayerStateChange");
 	
   };
 
   this.onYouTubePlayerStateChange = function( state ) {
+
+    console.log( 'onYouTubePlayerStateChange( ' + state + ' )' );
+
+    switch ( state ) {
 	
-	console.log( state );
+      case -1:
+	    console.log( 'unstarted' );
+        break;
+      case 0:
+		console.log( 'ended' );
+        break;
+      case 1:
+		console.log( 'playing' );
+		this.setBuffered( );
+        break;
+      case 2:
+		console.log( 'paused' );
+        break;
+      case 3:
+		console.log( 'buffering' );
+	    break;
+      case 5:
+		console.log( 'video queued' );
+	    break;
+	}
 	
   };
 
@@ -52,18 +65,19 @@ function MultiTube( ) {
 	
 	this.registerUser( );
 	this.initMouseEvents( );
-    onYouTubePlayerReady = $.proxy( this.onYouTubePlayerReady, this );
-	onYouTubePlayerStateChange = $.proxy( this.onYouTubePlayerStateChange, this );
+	this.initYouTubePlayer( );
 	
   };
 
   this.initYouTubePlayer = function( playerId ) {
     
-	console.log( 'initYouTubePlayer( ' + playerId + ' )' );
-    // this.youTubePlayer = $( playerId );
-    this.youTubePlayer = document.getElementById( playerId );
-	console.log( this.youTubePlayer );
-    this.youTubePlayer.addEventListener("onStateChange", "onYouTubePlayerStateChange");
+    onYouTubePlayerReady = $.proxy( this.onYouTubePlayerReady, this );
+	onYouTubePlayerStateChange = $.proxy( this.onYouTubePlayerStateChange, this );
+	
+    var params = { allowScriptAccess: "always" };
+    var atts = { id: "myytplayer" };
+    swfobject.embedSWF("http://www.youtube.com/v/zuzaxlddWbk?autoplay=1&controls=0&enablejsapi=1&rel=0&showinfo=0&version=3&playerapiid=multitube",
+                       "ytapiplayer", "1280", "720", "8", null, null, params, atts);
 
   };
 
@@ -125,12 +139,27 @@ function MultiTube( ) {
 
   };
 
+  this.setBuffered = function( ) {
+
+    this.buffered = true;
+	this.broadcastStatus( );
+
+  };
+
   this.setMousePosition = function( x, y ) {
+	
+	this.mouseX = x;
+	this.mouseY = y;
+	this.broadcastStatus( );
+	
+  };
+
+  this.broadcastStatus = function( ) {
 
     // console.log( this.userId + ': ' + x + ', ' + y );
     // console.log( 'userDataRef: ' + this.userDataRef );
-
-    this.userDataRef.set( { id: this.userId, x: x, y: y } );
+	
+	this.userDataRef.set( { id: this.userId, x: this.mouseX, y: this.mouseY, buffered: this.buffered } );
 
   };
 	
@@ -142,9 +171,3 @@ $( document ).ready( function( ) {
   multiTube.init( );
 
 });
-
-/*onYouTubePlayerStateChange = function( state ) {
-
-  console.log( 'onYouTubePlayerStateChange( ' + state + ' )' );
-
-};*/
