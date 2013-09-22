@@ -1,6 +1,6 @@
 function MultiTube( ) {
 
-  this.MIN_USERS = 1;
+  this.MIN_USERS = 2;
 
   this.buffered = false;
   this.mouseX = 0;
@@ -14,7 +14,7 @@ function MultiTube( ) {
 
   this.onYouTubePlayerReady = function( playerId ) {
 	
-	// console.log( 'onYouTubePlayerReady' );
+	console.log( '\nonYouTubePlayerReady' );
 	
     this.youTubePlayer = document.getElementById("myytplayer");
     this.youTubePlayer.addEventListener("onStateChange", "onYouTubePlayerStateChange");
