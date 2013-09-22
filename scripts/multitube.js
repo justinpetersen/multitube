@@ -1,5 +1,7 @@
 function MultiTube( ) {
 
+  this.MIN_USERS = 1;
+
   this.buffered = false;
   this.mouseX = 0;
   this.mouseY = 0;
@@ -8,6 +10,7 @@ function MultiTube( ) {
   this.userId = -1;
   this.cursors = {};
   this.youTubePlayer = null;
+  this.playedExplosion = false;
 
   this.onYouTubePlayerReady = function( playerId ) {
 	
@@ -20,7 +23,7 @@ function MultiTube( ) {
 
   this.onYouTubePlayerStateChange = function( state ) {
 
-    console.log( 'onYouTubePlayerStateChange( ' + state + ' )' );
+    console.log( '\nonYouTubePlayerStateChange( ' + state + ' )' );
 
     switch ( state ) {
 	
@@ -32,13 +35,14 @@ function MultiTube( ) {
         break;
       case 1:
 		console.log( 'playing' );
-		this.setBuffered( );
+		this.setBuffered( true );
         break;
       case 2:
 		console.log( 'paused' );
         break;
       case 3:
 		console.log( 'buffering' );
+		this.setBuffered( false );
 	    break;
       case 5:
 		console.log( 'video queued' );
@@ -57,7 +61,8 @@ function MultiTube( ) {
 	
 	// console.log( snapshot.val( ) );
 	
-	this.renderCursors( snapshot.val( ) )
+	this.renderCursors( snapshot.val( ) );
+	this.syncPlayback( snapshot.val( ) );
 	
   };
 
@@ -85,10 +90,11 @@ function MultiTube( ) {
 
 	this.userId = this.getUserId( );
 	this.userDataRef = new Firebase( 'https://multitube1.firebaseio.com/users/' + this.userId );
-	this.userDataRef.set( { id: this.userId } );
 
 	this.usersListDataRef = new Firebase( 'https://multitube1.firebaseio.com/users' );
 	this.usersListDataRef.on( 'value', $.proxy( this.onUserUpdate, this ) );
+	
+	this.broadcastStatus( );
 	
   };
 
@@ -108,11 +114,81 @@ function MultiTube( ) {
 		this.createCursor( user );
 	}
 	
-	$( '#' + user.id ).animate( { left: user.x - 16, top: user.y - 16 }, { duration: 100, queue: false } );
+	$( '#' + user.id ).offset( { left: user.x - 16, top: user.y - 16 } );
 	
   };
 
-  this.createCursor = function ( user ) {
+  this.syncPlayback = function ( users ) {
+	
+    console.log( '\nsyncPlayback( )' );
+	if ( this.youTubePlayer == null ) {
+		return;
+	}
+	
+	var userCount = 0;
+	var allUsersBuffered = true;
+	for ( id in users ) {
+		userCount++;
+		user = users[ id ];
+		console.log( '  syncPlayback: ' + id + ': buffered: ' + user.buffered + ', x: ' + user.x + ', y: ' + user.y );
+		if ( !user.buffered ) {
+			allUsersBuffered = false;
+			break;
+		}
+	}
+	
+	console.log( '  syncPlayback: userCount: ' + userCount + ', allUsersBuffered: ' + allUsersBuffered );
+	if ( userCount >= this.MIN_USERS && allUsersBuffered ) {
+		this.youTubePlayer.playVideo( );
+	} else if ( this.youTubePlayer.getPlayerState( ) == 1 ){
+		this.youTubePlayer.pauseVideo( );
+	}
+	
+	if ( this.testMouseHit( users ) ) {
+	  this.playExplosion( );
+	}
+	
+  };
+
+  this.testMouseHit = function( users ) {
+
+    console.log( '\ntestMouseHit( )' );
+    console.log( '  currentTime: ' + this.youTubePlayer.getCurrentTime( ) );
+
+    var allUsersMouseHit = false;
+    if ( this.youTubePlayer.getCurrentTime( ) > 2 && this.youTubePlayer.getCurrentTime( ) < 3 && !this.playedExplosion ) {
+      allUsersMouseHit = true;
+      for ( id in users ) {
+        user = users[ id ];
+		console.log( '  testMouseHit: ' + id + ': buffered: ' + user.buffered + ', x: ' + user.x + ', y: ' + user.y );
+        if ( Math.abs( user.x - 600 ) > 50 || Math.abs( user.y - 360 ) > 50 ) {
+          allUsersMouseHit = false;
+          break;
+        }
+	  }
+    }
+
+    return allUsersMouseHit;
+	
+  };
+
+  this.playExplosion = function( ) {
+	
+    this.playedExplosion = true;
+    var explosion = $( "<div class='explosion' id='explosion1'><img src='images/explosion.gif' width='128' height='128' /></div>" );
+    $( 'body' ).append( explosion );
+    $( '#explosion1').offset( { left: 600 - 64, top: 360 - 64 } );
+    setTimeout( $.proxy( this.stopExplosion, this ), 800 );
+
+  };
+
+  this.stopExplosion = function( ) {
+
+    $( '#explosion1').remove( );
+	
+  };
+
+  this.createCursor = function( user ) {
 	
 	// do not render a crosshair for yourself
 	if ( user.id == this.userId ) {
@@ -120,7 +196,7 @@ function MultiTube( ) {
 	}
 	
 	var crosshair = $( "<div class='crosshair' id='" + user.id + "'><img src='images/crosshair.png' width='32' height='32' /></div>" );
-	$( "body" ).append( crosshair );
+	$( 'body' ).append( crosshair );
 	
     this.cursors[ user.id ] = true;
 
@@ -139,9 +215,11 @@ function MultiTube( ) {
 
   };
 
-  this.setBuffered = function( ) {
+  this.setBuffered = function( b ) {
+	
+	console.log( 'setBuffered( ' + b + ' )' );
 
-    this.buffered = true;
+    this.buffered = b;
 	this.broadcastStatus( );
 
   };
